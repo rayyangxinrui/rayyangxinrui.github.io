@@ -1,0 +1,843 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Ray Yang (杨欣睿), game designer at NYU Game Center. Games, jam projects and AI game development work.">
+<meta property="og:title" content="Ray Yang · 杨欣睿">
+<meta property="og:description" content="Game design · NYU Game Center · TapTap games played by 54,000+ people">
+<meta property="og:image" content="img/horror-banner.jpg">
+<style>body{margin:0}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Ray Yang</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;800;900&family=Manrope:wght@400;600;800&family=Noto+Sans+SC:wght@400;700;900&family=VT323&family=Silkscreen:wght@400;700&family=Caveat+Brush&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Concept: RAY.TV. The site is a TV you flip through. Channel 00 is a playable runner through every game's world;
+   each game then takes over the whole screen in its own art direction. One deliberate world per channel, so colors are set per section. */
+:root{
+  color-scheme:dark;
+  --ultra:#2B2BEF; --ultra-deep:#1A1AB8; --paper:#F2F1EC; --ink:#101014;
+  --coral:#FF5B3A; --sun:#FFD23F;
+  --f-display:"Unbounded","Noto Sans SC",system-ui,sans-serif;
+  --f-body:"Manrope","Noto Sans SC",system-ui,sans-serif;
+  --f-cn:"Noto Sans SC",system-ui,sans-serif;
+  --f-osd:"VT323",ui-monospace,monospace;
+  --f-pixel:"Silkscreen","Noto Sans SC",monospace;
+  --f-hand:"Caveat Brush","Noto Sans SC",cursive;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  --gut-l:max(16px,env(safe-area-inset-left,0px)); --gut-r:max(16px,env(safe-area-inset-right,0px));
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{background:var(--ink);color:var(--paper);font-family:var(--f-body);font-size:16px;line-height:1.6;overflow-x:hidden}
+body:not([data-lang="zh"]) .zh, body[data-lang="zh"] .en{display:none!important}
+a{color:inherit}
+a:focus-visible,button:focus-visible{outline:2px solid currentColor;outline-offset:3px}
+img{display:block;max-width:100%}
+.inner{max-width:1180px;margin:0 auto;padding-left:var(--gut-l);padding-right:var(--gut-r)}
+h1,h2,h3{margin:0;text-wrap:balance}
+p{margin:0}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:999px;font:700 14px var(--f-body);text-decoration:none;border:2px solid currentColor;background:transparent;color:inherit;cursor:pointer;transition:transform .15s}
+.btn:hover{transform:translateY(-2px)}
+
+/* ---------- global chrome ---------- */
+.topbar{position:fixed;z-index:40;top:calc(env(safe-area-inset-top,0px) + 14px);left:var(--gut-l);right:var(--gut-r);display:flex;justify-content:space-between;align-items:center;pointer-events:none;mix-blend-mode:difference;color:#fff}
+.topbar > *{pointer-events:auto}
+.logo{font:900 15px var(--f-display);letter-spacing:.02em;text-decoration:none}
+.logo i{font-style:normal;opacity:.6}
+.lang{display:flex;gap:2px;font:20px var(--f-osd)}
+.lang button{background:none;border:0;color:#fff;font:inherit;cursor:pointer;padding:2px 8px;opacity:.5}
+.lang button[aria-pressed="true"]{opacity:1;text-decoration:underline;text-underline-offset:4px}
+
+.dial{position:fixed;z-index:40;right:calc(var(--gut-r) - 4px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:4px;mix-blend-mode:difference;color:#fff}
+.dial a{font:20px/1 var(--f-osd);text-decoration:none;display:flex;align-items:center;gap:8px;justify-content:flex-end;opacity:.45;padding:3px 0}
+.dial a span{opacity:0;transition:opacity .2s;font-size:16px;white-space:nowrap}
+.dial a:hover span,.dial a.on span{opacity:1}
+.dial a.on{opacity:1}
+.dial a::after{content:"";width:14px;height:2px;background:currentColor}
+.dial a.on::after{width:26px}
+
+.osd{position:fixed;z-index:45;top:calc(env(safe-area-inset-top,0px) + 54px);right:calc(var(--gut-r) + 8px);font:44px/1 var(--f-osd);color:#7CFF6B;text-shadow:0 0 8px rgba(124,255,107,.6);pointer-events:none;opacity:0;transition:opacity .2s;text-align:right}
+.osd small{display:block;font-size:22px}
+.osd.show{opacity:1}
+#static{position:fixed;inset:0;z-index:44;width:100%;height:100%;pointer-events:none;opacity:0;image-rendering:pixelated}
+#static.flash{animation:flash .32s steps(4)}
+@keyframes flash{0%{opacity:.55}60%{opacity:.25}100%{opacity:0}}
+
+section{position:relative;overflow:hidden}
+.chno{font:22px var(--f-osd);letter-spacing:.04em;opacity:.8}
+
+/* ---------- CH00 hero: an endless run through the games' worlds ---------- */
+#ch0{background:#0B1033;color:#fff;height:max(560px,100svh)}
+#play{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;touch-action:pan-y;cursor:pointer}
+#ch0::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:1;background:radial-gradient(ellipse at 50% 45%,transparent 58%,rgba(0,0,0,.42)),repeating-linear-gradient(0deg,rgba(0,0,0,.10) 0 1px,transparent 1px 3px)}
+.hero-ui{position:absolute;inset:0;z-index:2;pointer-events:none;padding:calc(env(safe-area-inset-top,0px) + 64px) var(--gut-r) 22px var(--gut-l);display:flex;flex-direction:column;justify-content:space-between;text-shadow:3px 3px 0 rgba(0,0,0,.55)}
+.hero-row{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;max-width:1180px;width:100%;margin:0 auto;flex-wrap:wrap}
+.name{font:800 clamp(40px,7vw,96px)/.92 var(--f-display);letter-spacing:-.035em}
+.name span{display:block;font:900 .36em/1.5 var(--f-cn);letter-spacing:.32em;margin-top:.3em}
+.sub{margin-top:12px;font:700 13px/1.6 var(--f-pixel);letter-spacing:.06em}
+.hud{font:700 13px/1.8 var(--f-pixel);text-align:right;letter-spacing:.04em}
+.hud .score{font-size:18px;font-variant-numeric:tabular-nums}
+.hud button{pointer-events:auto;background:none;border:0;color:inherit;font:inherit;cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:3px;text-shadow:inherit;text-align:right}
+.controls{font:700 12px var(--f-pixel);letter-spacing:.06em;display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+.controls .k{border:2px solid currentColor;padding:1px 6px;margin:0 2px}
+.scroll-cue{font:700 12px var(--f-pixel);pointer-events:auto;text-decoration:none;animation:bob 1.4s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(4px)}}
+@media (max-width:640px){.hud{text-align:left}.hud button{text-align:left}}
+
+/* ---------- intro statement ---------- */
+#intro{background:var(--paper);color:var(--ink);padding-block:clamp(72px,10vw,128px)}
+.statement{font:800 clamp(28px,4.4vw,58px)/1.18 var(--f-body);letter-spacing:-.025em;max-width:22ch}
+body[data-lang="zh"] .statement{font-family:var(--f-cn);font-weight:900;letter-spacing:0;line-height:1.35;max-width:16em}
+.statement .chipimg{display:inline-block;height:.82em;aspect-ratio:16/9;border-radius:.2em;vertical-align:-.08em;object-fit:cover;margin:0 .08em;transition:transform .2s}
+.statement .chipimg:hover{transform:scale(1.6) rotate(-3deg);position:relative;z-index:2}
+.statement em{font-style:normal;color:var(--ultra)}
+.stickers{position:relative;height:200px;margin-top:40px}
+.sticker{position:absolute;touch-action:none;cursor:grab;user-select:none;padding:14px 18px;border-radius:14px;font-weight:800;line-height:1.15;box-shadow:0 6px 0 rgba(0,0,0,.18);display:grid;gap:2px;max-width:220px}
+.sticker:active{cursor:grabbing}
+.sticker strong{font:900 32px/1 var(--f-display)}
+.sticker small{font:600 12px/1.3 var(--f-body)}
+.s1{background:var(--ultra);color:var(--paper);left:0;top:30px;transform:rotate(-5deg)}
+.s2{background:var(--sun);color:var(--ink);left:min(32%,240px);top:70px;transform:rotate(4deg)}
+.s3{background:var(--coral);color:var(--paper);left:min(60%,500px);top:10px;transform:rotate(-2deg)}
+.s4{background:var(--ink);color:var(--paper);left:min(78%,760px);top:90px;transform:rotate(6deg);border-radius:50%;width:150px;height:150px;place-content:center;text-align:center;padding:10px}
+.drag-note{font:20px var(--f-osd);color:#6b6b78;margin-top:6px}
+
+/* ---------- shared channel layout ---------- */
+.ch{padding-block:clamp(80px,10vw,130px)}
+.ch-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:clamp(28px,4vw,56px);align-items:center}
+.ch-grid.flip{grid-template-columns:minmax(0,1fr) minmax(0,1.25fr)}
+.ch-grid.flip .media{order:2}
+.copy{display:grid;gap:18px;min-width:0}
+.copy ul{margin:0;padding-left:18px;display:grid;gap:8px;font-size:15.5px}
+.bignum{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.bignum strong{font-variant-numeric:tabular-nums}
+.actions{display:flex;flex-wrap:wrap;gap:10px}
+.media{position:relative;min-width:0}
+.tilt{transition:transform .25s ease-out;transform-style:preserve-3d;will-change:transform}
+
+/* CH01 horror */
+#ch1{background:#060606;color:#EDE6E0}
+#ch1::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(255,255,255,.035) 0 1px,transparent 1px 3px)}
+.rec{display:flex;align-items:center;gap:10px;font:26px var(--f-osd);color:#FF3B30}
+.rec i{width:12px;height:12px;border-radius:50%;background:#FF3B30;animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+.rec .tc{color:#EDE6E0;opacity:.7}
+.horror-title{font:900 clamp(40px,6vw,76px)/1.02 var(--f-cn);text-shadow:-3px 0 #FF2A2A,3px 0 #18E0FF;letter-spacing:.02em}
+.horror-title small{display:block;font-size:.34em;letter-spacing:.5em;margin-top:12px;text-shadow:none;opacity:.85;font-weight:700}
+#ch1 .bignum strong{font:400 88px/0.9 var(--f-osd);color:#FF3B30}
+#ch1 .btn.fill{background:#FF3B30;border-color:#FF3B30;color:#060606}
+.screen{position:relative;border:1px solid #2a2a2a;overflow:hidden;aspect-ratio:16/9;background:#000}
+.screen img{width:100%;height:100%;object-fit:cover}
+.screen .ghost{position:absolute;inset:0;opacity:0;mix-blend-mode:screen;transition:opacity .15s}
+.screen:hover .ghost.r{opacity:.7;transform:translateX(-6px);filter:url(#onlyRed)}
+.screen:hover .ghost.c{opacity:.7;transform:translateX(6px);filter:url(#onlyCyan)}
+.danmaku{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.dm{position:absolute;left:100%;white-space:nowrap;font:600 clamp(13px,1.6vw,17px) var(--f-cn);color:#fff;text-shadow:0 0 3px #000,0 0 6px #000;animation:dm linear forwards}
+@keyframes dm{to{transform:translateX(calc(-100vw - 100%))}}
+.thumbs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.thumbs img{aspect-ratio:16/9;object-fit:cover;width:100%;border:1px solid #2a2a2a;filter:grayscale(.4) contrast(1.1)}
+
+/* CH02 overflow */
+#ch2{background:#02030A;color:#F3F1EA}
+#stars{position:absolute;inset:0;width:100%;height:100%}
+#ch2 .inner{position:relative}
+.ov-title{font:900 clamp(44px,6.4vw,84px)/1 var(--f-cn);letter-spacing:.06em}
+.ov-title small{display:block;font:600 clamp(12px,1.2vw,15px) var(--f-display);letter-spacing:.32em;margin-top:14px;opacity:.85}
+.ov-arc{position:absolute;left:-4%;right:-4%;bottom:-30px;height:90px;pointer-events:none}
+#ch2 .bignum strong{font:800 clamp(44px,5vw,64px)/1 var(--f-display);color:#FF3A2E}
+.days{display:grid;grid-template-columns:repeat(21,1fr);gap:3px;max-width:420px}
+.days i{height:22px;background:rgba(243,241,234,.12);border-radius:2px;transition:background .2s}
+.days.go i{background:#FF3A2E}
+.days-label{font:12px var(--f-mono);letter-spacing:.12em;opacity:.7;display:flex;justify-content:space-between;max-width:420px}
+.glow{border-radius:6px;overflow:hidden;box-shadow:0 0 80px rgba(80,140,255,.25),0 0 0 1px rgba(255,255,255,.08)}
+.glow img{width:100%;aspect-ratio:16/9;object-fit:cover}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+#ch2 .btn.fill{background:#F3F1EA;border-color:#F3F1EA;color:#02030A}
+
+/* CH03 coin */
+#ch3{background:#2FE3A2;color:#1A0B2E;cursor:pointer}
+#ch3::before{content:"";position:absolute;inset:-50%;background:repeating-conic-gradient(from 0deg at 50% 50%,rgba(255,46,136,.16) 0 6deg,transparent 6deg 18deg);animation:spin 60s linear infinite;pointer-events:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+#ch3 .inner{position:relative}
+.px-title{font:700 clamp(44px,6.6vw,88px)/1 var(--f-cn);color:#FFE75A;-webkit-text-stroke:3px #1A0B2E;paint-order:stroke fill;text-shadow:6px 6px 0 #FF2E88}
+.px-title small{display:block;font:700 clamp(14px,1.6vw,20px) var(--f-pixel);color:#1A0B2E;-webkit-text-stroke:0;text-shadow:none;margin-top:12px;letter-spacing:.06em}
+.pixframe{border:6px solid #1A0B2E;box-shadow:10px 10px 0 #FF2E88;background:#1A0B2E;image-rendering:pixelated}
+.pixframe img{width:100%;aspect-ratio:16/9;object-fit:cover}
+#ch3 .bignum strong{font:700 clamp(46px,6vw,72px)/1 var(--f-pixel);color:#1A0B2E}
+#ch3 .tag{font:700 13px var(--f-pixel)}
+#ch3 .copy{background:rgba(255,255,255,.55);border:4px solid #1A0B2E;padding:22px;box-shadow:8px 8px 0 #1A0B2E}
+#ch3 .btn{border-radius:0;border-width:3px;font-family:var(--f-pixel)}
+#ch3 .btn.fill{background:#FF2E88;border-color:#1A0B2E;color:#fff;box-shadow:4px 4px 0 #1A0B2E}
+.coin{position:absolute;width:14px;height:14px;background:#FFE75A;box-shadow:inset -3px -3px 0 #E0A400,0 0 0 2px #1A0B2E;pointer-events:none;z-index:3;animation:pop .9s cubic-bezier(.2,.7,.4,1) forwards}
+@keyframes pop{to{transform:translate(var(--dx),var(--dy)) rotate(var(--r));opacity:0}}
+.pinhint{font:700 12px var(--f-pixel);opacity:.75}
+
+/* CH04 M.A.S.K. */
+#ch4{background:#FFC93C;color:#2A1A08}
+#ch4::before{content:"";position:absolute;left:50%;top:50%;width:250vmax;height:250vmax;margin:-125vmax 0 0 -125vmax;background:repeating-conic-gradient(#FFE6A0 0 9deg,#FFC93C 9deg 18deg);animation:spin 90s linear infinite;pointer-events:none}
+#ch4 .inner{position:relative}
+.hand-title{font:400 clamp(64px,10vw,140px)/.9 var(--f-hand);color:#2A1A08;letter-spacing:.01em}
+.hand-tag{font:400 clamp(22px,2.4vw,30px) var(--f-hand);color:#E8202A}
+.wobble{filter:url(#wobble)}
+.paper-card{background:#FFF8E6;border:3px solid #2A1A08;border-radius:18px 10px 22px 12px;padding:24px;box-shadow:6px 8px 0 rgba(42,26,8,.35)}
+.parrots{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.parrots div{border:3px solid #2A1A08;border-radius:12px 6px 14px 8px;padding:8px 6px;text-align:center;font:400 18px var(--f-hand);color:#fff;text-shadow:1px 1px 0 #2A1A08;transition:transform .2s}
+.parrots div:hover{transform:translateY(-6px) rotate(-4deg)}
+.award{display:inline-block;background:#E8202A;color:#FFF8E6;padding:6px 14px;font:400 20px var(--f-hand);transform:rotate(-2deg);border-radius:6px}
+.polaroid{background:#FFF8E6;padding:12px 12px 46px;border:3px solid #2A1A08;transform:rotate(2.5deg);box-shadow:10px 12px 0 rgba(42,26,8,.3);position:relative}
+.polaroid img{width:100%;aspect-ratio:16/9;object-fit:cover;border:2px solid #2A1A08}
+.polaroid figcaption{position:absolute;left:0;right:0;bottom:8px;text-align:center;font:400 24px var(--f-hand)}
+#ch4 .btn.fill{background:#2A1A08;border-color:#2A1A08;color:#FFC93C}
+
+/* CH05 RayLoop */
+#ch5{background:#E6EAF2;color:#0E1530}
+#ch5::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(43,43,239,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(43,43,239,.08) 1px,transparent 1px);background-size:28px 28px;pointer-events:none}
+#ch5 .inner{position:relative}
+.loop-title{font:900 clamp(38px,5.4vw,70px)/1 var(--f-display);letter-spacing:-.03em;color:var(--ultra)}
+.term{background:#0E1530;color:#D6DCF0;border-radius:12px;padding:18px 20px;font:13.5px/1.75 var(--f-mono);min-height:330px;box-shadow:0 30px 60px -20px rgba(14,21,48,.5);overflow-x:auto}
+.term .bar{display:flex;gap:6px;margin-bottom:12px}
+.term .bar i{width:11px;height:11px;border-radius:50%;background:#3a4363}
+.term .ok{color:#6EF0A8}.term .ex{color:#FF7A5C;font-weight:600}.term .dim{color:#7C86A8}
+.term .cursor{display:inline-block;width:8px;height:15px;background:#D6DCF0;vertical-align:-2px;animation:blink 1s steps(2) infinite}
+#ch5 .btn.fill{background:var(--ultra);border-color:var(--ultra);color:#fff}
+
+/* CH06 side quests */
+#ch6{background:var(--ink);color:var(--paper)}
+.sq-head{display:flex;justify-content:space-between;align-items:end;gap:16px;flex-wrap:wrap;margin-bottom:28px}
+.sq-head h2{font:900 clamp(34px,5vw,60px)/1 var(--f-display);letter-spacing:-.03em}
+.quests{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
+.quest{display:block;text-decoration:none;border-radius:16px;overflow:hidden;background:#1C1C24;position:relative}
+.quest img{width:100%;aspect-ratio:16/10;object-fit:cover;transition:transform .5s}
+.quest:hover img{transform:scale(1.05)}
+.quest .q{padding:18px 20px 22px;display:grid;gap:6px}
+.quest h3{font:800 24px var(--f-display);letter-spacing:-.02em}
+.quest .meta{font:20px var(--f-osd);color:var(--sun)}
+.quest p{font-size:15px;opacity:.85}
+
+/* CH07 me */
+#ch7{background:var(--ultra);color:var(--paper)}
+.me-title{font:900 clamp(40px,7vw,96px)/.95 var(--f-display);letter-spacing:-.04em}
+body[data-lang="zh"] .me-title{font-family:var(--f-cn);letter-spacing:0}
+.me-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px;margin-top:44px}
+.me-card{border:2px solid rgba(242,241,236,.35);border-radius:20px;padding:26px;display:grid;gap:12px;align-content:start;min-width:0}
+.me-card .when{font:22px var(--f-osd);color:var(--sun)}
+.me-card h3{font:800 26px var(--f-display);letter-spacing:-.02em}
+body[data-lang="zh"] .me-card h3{font-family:var(--f-cn);font-weight:900}
+.me-card .role{opacity:.8;font-weight:600}
+.me-card ul{margin:0;padding-left:18px;display:grid;gap:8px;font-size:15px}
+.rank1{display:flex;align-items:center;gap:16px;background:var(--sun);color:var(--ink);border-radius:14px;padding:14px 18px;margin-top:4px}
+.rank1 strong{font:900 44px/1 var(--f-display)}
+.rank1 span{font-weight:700;font-size:14px;line-height:1.35}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:26px}
+.tools span{border:1.5px solid rgba(242,241,236,.45);border-radius:999px;padding:5px 12px;font-size:13px;font-weight:600}
+.contact{margin-top:72px;display:grid;gap:18px}
+.contact .big{font:900 clamp(32px,6vw,80px)/1 var(--f-display);letter-spacing:-.04em}
+body[data-lang="zh"] .contact .big{font-family:var(--f-cn);letter-spacing:0}
+.mailrow{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.mail{font:600 clamp(18px,2.6vw,28px) var(--f-mono);user-select:all;word-break:break-all;background:rgba(0,0,0,.18);padding:8px 14px;border-radius:10px}
+#ch7 .btn.fill{background:var(--paper);border-color:var(--paper);color:var(--ultra)}
+.copied{font:20px var(--f-osd);color:var(--sun)}
+footer{padding-block:40px 30px;font:20px var(--f-osd);opacity:.7;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+
+@media (max-width:900px){
+  .ch-grid,.ch-grid.flip{grid-template-columns:1fr}
+  .ch-grid.flip .media{order:0}
+  .quests,.me-grid{grid-template-columns:1fr}
+  .dial a span{display:none}
+}
+@media (max-width:640px){
+  .dial{top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);transform:none;flex-direction:row;gap:0;right:var(--gut-r)}
+  .dial a{padding:4px 5px}
+  .dial a::after{display:none}
+  .hero-cn{display:none}
+  .stickers{height:300px}
+  .s1{left:0;top:10px}.s2{left:38%;top:60px}.s3{left:2%;top:150px}.s4{left:52%;top:160px}
+  .osd{font-size:34px}
+  #ch1 .bignum strong{font-size:64px}
+  .parrots{grid-template-columns:repeat(2,1fr)}
+}
+@media (prefers-reduced-motion:reduce){
+  #ch3::before,#ch4::before{animation:none}
+  .rec i,.term .cursor{animation:none}
+}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="onlyRed"><feColorMatrix type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0"/></filter>
+  <filter id="onlyCyan"><feColorMatrix type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0"/></filter>
+  <filter id="wobble"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="3"/><feDisplacementMap in="SourceGraphic" scale="4"/></filter>
+</svg>
+
+<div class="topbar">
+  <a class="logo" href="#ch0">RAY<i>.TV</i></a>
+  <div class="lang" role="group" aria-label="Language">
+    <button id="lang-en" type="button" data-set="en" aria-pressed="true">EN</button>
+    <button id="lang-zh" type="button" data-set="zh" aria-pressed="false">中文</button>
+  </div>
+</div>
+
+<nav class="dial" aria-label="Channels">
+  <a href="#ch0" data-ch="0">00<span class="en">Start</span><span class="zh">开机</span></a>
+  <a href="#ch1" data-ch="1">01<span class="en">Horror Livestream</span><span class="zh">恐怖直播</span></a>
+  <a href="#ch2" data-ch="2">02<span class="en">Consciousness Overflow</span><span class="zh">意识溢出</span></a>
+  <a href="#ch3" data-ch="3">03<span class="en">Coin-Toss Journey</span><span class="zh">撒币之旅</span></a>
+  <a href="#ch4" data-ch="4">04<span>M.A.S.K.</span></a>
+  <a href="#ch5" data-ch="5">05<span>RayLoop</span></a>
+  <a href="#ch6" data-ch="6">06<span class="en">Side quests</span><span class="zh">支线</span></a>
+  <a href="#ch7" data-ch="7">07<span class="en">About me</span><span class="zh">关于我</span></a>
+</nav>
+<div class="osd" id="osd" aria-hidden="true"><span id="osd-n">CH 00</span><small id="osd-t"></small></div>
+<canvas id="static" width="160" height="90" aria-hidden="true"></canvas>
+
+<main>
+<!-- CH00 -->
+<section id="ch0" data-ch="0" data-name-en="START" data-name-zh="开机">
+  <canvas id="play" aria-label="A small runner game that travels through the worlds of Ray's games. Press space or tap to jump."></canvas>
+  <div class="hero-ui">
+    <div class="hero-row">
+      <div>
+        <h1 class="name">Ray Yang<span>杨欣睿</span></h1>
+        <p class="sub"><span class="en">GAME DESIGN · NYU GAME CENTER · CLASS OF 2028</span><span class="zh">游戏设计 · 纽约大学 GAME CENTER · 2028 届</span></p>
+      </div>
+      <div class="hud">
+        <div class="score">HI <span id="hi">00000</span>&nbsp;&nbsp;<span id="sc">00000</span></div>
+        <div><button id="wlabel" type="button"></button></div>
+        <div id="mode"></div>
+      </div>
+    </div>
+    <div class="hero-row" style="align-items:flex-end">
+      <div class="controls"><span><span class="k">SPACE</span>/<span class="k">TAP</span> <span class="en">JUMP</span><span class="zh">跳跃</span></span><span class="en">HOLD TO JUMP HIGHER</span><span class="zh">按住跳得更高</span></div>
+      <a class="scroll-cue" href="#intro">↓ <span class="en">WORK</span><span class="zh">作品</span></a>
+    </div>
+  </div>
+</section>
+
+<!-- INTRO -->
+<section id="intro">
+  <div class="inner">
+    <p class="statement en">
+      I study game design at NYU Game Center. I've released three games on TapTap<img class="chipimg" src="img/horror-banner.jpg" alt=""><img class="chipimg" src="img/overflow-banner.jpg" alt=""><img class="chipimg" src="img/coin-banner.jpg" alt="">, played by about <em>54,000 people</em> so far. In summer 2026 I worked on AI game development at XD Inc.
+    </p>
+    <p class="statement zh">
+      我在纽约大学 Game Center 读游戏设计。在 TapTap 上线了三款游戏<img class="chipimg" src="img/horror-banner.jpg" alt=""><img class="chipimg" src="img/overflow-banner.jpg" alt=""><img class="chipimg" src="img/coin-banner.jpg" alt="">，目前大约 <em>5.4 万人</em>玩过。2026 年夏天在心动网络做 AI 游戏开发实习。
+    </p>
+    <div class="stickers" id="stickers">
+      <div class="sticker s1"><strong>#1</strong><small><span class="en">NYU Game Center · Princeton Review 2026 undergrad game design</span><span class="zh">NYU Game Center · 2026 普林斯顿评论本科游戏设计第 1</span></small></div>
+      <div class="sticker s2"><strong>54K+</strong><small><span class="en">players on TapTap</span><span class="zh">TapTap 玩家</span></small></div>
+      <div class="sticker s3"><strong>3.889</strong><small>GPA · Dean's List</small></div>
+      <div class="sticker s4"><strong>XD</strong><small><span class="en">Summer 2026, reporting to the CEO</span><span class="zh">2026 暑期 · 向 CEO 汇报</span></small></div>
+    </div>
+    <p class="drag-note"><span class="en">↑ stickers are draggable</span><span class="zh">↑ 贴纸可以拖动</span></p>
+  </div>
+</section>
+
+<!-- CH01 HORROR -->
+<section id="ch1" class="ch" data-ch="1" data-name-en="HORROR LIVESTREAM" data-name-zh="恐怖直播">
+  <div class="inner ch-grid">
+    <div class="media">
+      <div class="screen tilt" id="horrorScreen">
+        <img src="img/horror-shot.jpg" alt="In-game screenshot: a dark basement corridor with a pale face in the distance and livestream chat overlaid">
+        <img class="ghost r" src="img/horror-shot.jpg" alt="">
+        <img class="ghost c" src="img/horror-shot.jpg" alt="">
+        <div class="danmaku" id="danmaku"></div>
+      </div>
+      <div class="thumbs">
+        <img src="img/horror-banner.jpg" alt="Horror Livestream title card">
+        <img src="img/horror-interview.jpg" alt="TapTap developer interview header">
+      </div>
+    </div>
+    <div class="copy">
+      <div class="rec"><i></i>REC <span class="tc" id="tc">00:00:00</span></div>
+      <h2 class="horror-title">恐怖直播<small>魔都怪谈实录</small></h2>
+      <p class="en" style="opacity:.75">Horror Livestream: Shanghai Urban Legends · first-person 3D horror · solo, AI-assisted</p>
+      <p class="zh" style="opacity:.75">第一人称 3D 恐怖探索 · 独立开发 · AI 游戏</p>
+      <div class="bignum"><strong>30,000</strong><span class="en">players</span><span class="zh">玩家</span></div>
+      <ul class="en">
+        <li>Explore the basement, collect batteries, power the elevator, get out. Barricades and live chat pile on resource pressure and chases.</li>
+        <li>Built the <a href="https://maker.taptap.cn/skills/@ray/scene-assets-pipeline" target="_blank" rel="noopener">scene-assets-pipeline Skill</a>: textures, Tripo3D models, import and scene assembly in one pass inside TapTap Maker.</li>
+        <li>Featured in an official TapTap developer interview.</li>
+      </ul>
+      <ul class="zh">
+        <li>探索地下室、收集电池、启动电梯逃离；木板封路与直播弹幕制造资源与追逐双重压力。</li>
+        <li>在 TapTap Maker 中串联贴图、Tripo3D 建模、资产导入与场景搭建，封装为 <a href="https://maker.taptap.cn/skills/@ray/scene-assets-pipeline" target="_blank" rel="noopener">scene-assets-pipeline Skill</a>。</li>
+        <li>制作流程获 TapTap 官方开发者访谈专题报道。</li>
+      </ul>
+      <div class="actions">
+        <a class="btn fill" href="https://tap.cn/lclDsDWci" target="_blank" rel="noopener"><span class="en">Play on TapTap</span><span class="zh">在线试玩</span> ↗</a>
+        <a class="btn" href="https://www.taptap.cn/moment/826851717436932575" target="_blank" rel="noopener"><span class="en">Read the interview</span><span class="zh">开发者访谈</span> ↗</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CH02 OVERFLOW -->
+<section id="ch2" class="ch" data-ch="2" data-name-en="CONSCIOUSNESS OVERFLOW" data-name-zh="意识溢出">
+  <canvas id="stars" aria-hidden="true"></canvas>
+  <div class="inner ch-grid flip">
+    <div class="media">
+      <div class="glow tilt"><img src="img/overflow-shot1.jpg" alt="In-game screenshot: Earth rendered from scrolling data text, with Saturn and Jupiter in orbit"></div>
+      <div class="pair">
+        <div class="glow"><img src="img/overflow-shot2.jpg" alt="In-game screenshot of the solar-system map"></div>
+        <div class="glow"><img src="img/overflow-banner.jpg" alt="Consciousness Overflow title card"></div>
+      </div>
+    </div>
+    <div class="copy">
+      <span class="chno"><span class="en">TapTap Spotlight Game Jam · 21-day challenge</span><span class="zh">TapTap 聚光灯 GameJam · 21 天挑战</span></span>
+      <h2 class="ov-title">意识溢出<small>CONSCIOUSNESS OVERFLOW</small></h2>
+      <div class="bignum"><strong>19,000</strong><span class="en">players</span><span class="zh">玩家</span></div>
+      <div>
+        <div class="days" id="days"></div>
+        <div class="days-label"><span>DAY 01</span><span><span class="en">SHIPPED · PC / ANDROID / iOS</span><span class="zh">上线 · PC / 安卓 / iOS</span></span><span>DAY 21</span></div>
+      </div>
+      <ul class="en">
+        <li>Producer, designer and programmer for an NYU Game Center team. You are a virus program riding human shipping lanes to colonize the solar system in one year.</li>
+        <li>A real-time traffic sim of orbiting planets and thousands of ships; mining, raiding and compute economies; a 24-node tech tree.</li>
+        <li>Built with Claude Code and other agents, using task logs and automated checks to keep parallel branches in sync.</li>
+      </ul>
+      <ul class="zh">
+        <li>制作人 / 策划 / 程序，带领 NYU Game Center 团队：扮演病毒程序，借人类航线与港口传播感染，一年殖民太阳系。</li>
+        <li>搭建行星公转、上万舰船往返的实时交通模拟；设计采矿、劫掠、算力产出与 24 项科技树。</li>
+        <li>以 Claude Code 等 AI Agent 主导开发，用任务文档与自动化验证支撑多人多分支并行协作。</li>
+      </ul>
+      <div class="actions"><a class="btn fill" href="https://tap.cn/lPs6eqP81" target="_blank" rel="noopener"><span class="en">Play on TapTap</span><span class="zh">在线试玩</span> ↗</a></div>
+    </div>
+  </div>
+  <svg class="ov-arc" viewBox="0 0 1000 90" preserveAspectRatio="none" aria-hidden="true"><path d="M0 80 Q 500 -10 1000 70" fill="none" stroke="#FF3A2E" stroke-width="3"/></svg>
+</section>
+
+<!-- CH03 COIN -->
+<section id="ch3" class="ch" data-ch="3" data-name-en="COIN-TOSS JOURNEY" data-name-zh="撒币之旅">
+  <div class="inner ch-grid">
+    <div class="media">
+      <div class="pixframe tilt"><img src="img/coin-shot.jpg" alt="In-game screenshot: a ricochet ball bouncing through a dungeon room full of emoji enemies"></div>
+      <p class="pinhint" style="margin-top:18px"><span class="en">► CLICK ANYWHERE HERE TO TOSS COINS</span><span class="zh">► 点这里任意位置撒币</span></p>
+    </div>
+    <div class="copy">
+      <span class="tag"><span class="en">RICOCHET SHOOTER ROGUELIKE · SOLO</span><span class="zh">弹珠反弹射击 ROGUELIKE · 独立开发</span></span>
+      <h2 class="px-title">撒币之旅<small>COIN-TOSS JOURNEY</small></h2>
+      <div class="bignum"><strong>5,000</strong><span class="tag"><span class="en">PLAYERS</span><span class="zh">玩家</span></span></div>
+      <p class="en">One shot, every wall. Ricochet angles, bounces and pierce stack into full-screen chains. In-run upgrades and coin-unlocked characters, with the progression curve retuned after launch.</p>
+      <p class="zh">一次发射，弹遍全场。角度、反弹与穿透叠加；以多维强化与金币解锁角色构建局内外成长，上线后持续调整成长曲线。</p>
+      <div class="actions"><a class="btn fill" href="https://tap.cn/l8kYV1SbQ" target="_blank" rel="noopener"><span class="en">PLAY</span><span class="zh">在线试玩</span> ↗</a></div>
+    </div>
+  </div>
+</section>
+
+<!-- CH04 MASK -->
+<section id="ch4" class="ch" data-ch="4" data-name-en="M.A.S.K." data-name-zh="M.A.S.K.">
+  <div class="inner ch-grid flip">
+    <div class="media">
+      <figure class="polaroid tilt" style="margin:0"><img src="img/mask-cover.jpg" alt="Cover art: four cartoon parrots in red, pink, green and blue"><figcaption>GGJ 2026 · NYC</figcaption></figure>
+    </div>
+    <div class="copy">
+      <span class="hand-tag">Four parrots in a trench coat!</span>
+      <h2 class="hand-title wobble">M.A.S.K.</h2>
+      <span class="award"><span class="en">Global Game Jam 2026 NYC · Honorable Mention, Best Experiment</span><span class="zh">2026 Global Game Jam 纽约 · Best Experiment 荣誉提名</span></span>
+      <div class="paper-card">
+        <p class="en">Lead designer and programmer on a Chinese–American team, 48 hours. Four players share one disguised body: one each on the head, hands, legs and balance. Physics walking, disguises, clue hunting and multiple endings.</p>
+        <p class="zh">主策划 / 主程序，带领中美团队 48 小时完成。四名玩家共用一个伪装的身体，分控头、手、腿与平衡；物理行走、面具伪装、线索收集与多结局。</p>
+        <div class="parrots" style="margin-top:16px">
+          <div style="background:#F21F1F">P1 <span class="en">head</span><span class="zh">头</span></div>
+          <div style="background:#FF2BA6">P2 <span class="en">hands</span><span class="zh">手</span></div>
+          <div style="background:#9CC81E">P3 <span class="en">legs</span><span class="zh">腿</span></div>
+          <div style="background:#1C8FE8">P4 <span class="en">balance</span><span class="zh">平衡</span></div>
+        </div>
+      </div>
+      <div class="actions"><a class="btn fill" href="https://ray-yangxinrui.itch.io/mask" target="_blank" rel="noopener"><span class="en">Play on itch.io</span><span class="zh">itch.io 试玩</span> ↗</a></div>
+    </div>
+  </div>
+</section>
+
+<!-- CH05 RAYLOOP -->
+<section id="ch5" class="ch" data-ch="5" data-name-en="RAYLOOP" data-name-zh="RAYLOOP">
+  <div class="inner ch-grid">
+    <div class="media">
+      <div class="term" id="term" aria-label="Animated log of seven RayLoop iterations"><div class="bar"><i></i><i></i><i></i></div><div id="termOut"></div></div>
+    </div>
+    <div class="copy">
+      <span class="chno"><span class="en">AI game generation &amp; iteration workflow · solo</span><span class="zh">AI 游戏生成与迭代工作流 · 独立开发</span></span>
+      <h2 class="loop-title">RayLoop Skills<br>/ Hero Shooting</h2>
+      <p class="en">A Skill for generating and iterating on games with AI agents. Built on gauntlet-loop and refined over 7 rounds on a Three.js shooter: independent reviewers, A/B comparisons, and an exit rule that stops once another round stops paying off.</p>
+      <p class="zh">让 Agent 自己做游戏、自己评审、再迭代。基于 gauntlet-loop，在 Three.js 射击项目中 7 轮迭代 Skill：独立评审、A/B 比较，以及边际收益不足时自动退出。</p>
+      <div class="actions">
+        <a class="btn fill" href="https://github.com/rayyangxinrui/rayloop-skills" target="_blank" rel="noopener">RayLoop Skills ↗</a>
+        <a class="btn" href="https://github.com/rayyangxinrui/hero-shooting" target="_blank" rel="noopener">Hero Shooting ↗</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CH06 SIDE QUESTS -->
+<section id="ch6" class="ch" data-ch="6" data-name-en="SIDE QUESTS" data-name-zh="支线任务">
+  <div class="inner">
+    <div class="sq-head">
+      <h2><span class="en">Side quests</span><span class="zh">支线任务</span></h2>
+      <a class="btn" href="https://ray-yangxinrui.itch.io/" target="_blank" rel="noopener"><span class="en">All games on itch.io</span><span class="zh">itch.io 全部作品</span> ↗</a>
+    </div>
+    <div class="quests">
+      <a class="quest" href="https://ray-yangxinrui.itch.io/another-eye" target="_blank" rel="noopener">
+        <img src="img/anothereye-cover.jpg" alt="Another Eye cover: a first-person view holding a selfie stick in a brick tower">
+        <div class="q"><span class="meta"><span class="en">SOLO · FIRST-PERSON PUZZLE</span><span class="zh">独立开发 · 第一人称解谜</span></span><h3>Another Eye ↗</h3>
+        <p class="en">Solve spatial puzzles through a selfie stick's second point of view. 4 compact levels, 7 puzzles.</p>
+        <p class="zh">用自拍杆的第二视角解开空间谜题。4 个箱庭关卡，7 个谜题。</p></div>
+      </a>
+      <a class="quest" href="https://ppppwuhu.itch.io/street-sheep-ball" target="_blank" rel="noopener">
+        <img src="img/sheep-banner.jpg" alt="Street Sheep Ball banner" style="aspect-ratio:16/10;object-position:center">
+        <div class="q"><span class="meta">GMTK GAME JAM 2024 · TOP 20%</span><h3>Street Sheep Ball ↗</h3>
+        <p class="en">Lead designer and programmer. 3D pinball with a wolf ball and a sheep ball, dual scoring and tools you scale.</p>
+        <p class="zh">主策划 / 主程序。狼球与羊球的 3D 弹球，双球积分与工具缩放玩法。</p></div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- CH07 ME -->
+<section id="ch7" class="ch" data-ch="7" data-name-en="ABOUT ME" data-name-zh="关于我">
+  <div class="inner">
+    <span class="chno">CH 07</span>
+    <h2 class="me-title"><span class="en">About</span><span class="zh">关于我</span></h2>
+    <div class="me-grid">
+      <div class="me-card">
+        <span class="when"><span class="en">SUMMER 2026</span><span class="zh">2026 暑期</span></span>
+        <h3><span class="en">XD Inc.</span><span class="zh">心动网络</span></h3>
+        <p class="role"><span class="en">AI Game Development Intern, Executive Office</span><span class="zh">执行办公室 · AI 游戏开发实习生</span></p>
+        <ul class="en">
+          <li>Reported weekly to CEO Huang Yimeng and proposed TapTap Maker product directions from hands-on development.</li>
+          <li>Built and published games on TapTap with Codex, Claude, Tripo and TapTap Maker; benchmarked AI models.</li>
+          <li>Turned real project work into reusable Skills and led Maker feature iterations and core capability improvements.</li>
+        </ul>
+        <ul class="zh">
+          <li>每周直接向 CEO 黄一孟汇报，结合一线开发经验提出 TapTap Maker 产品演进建议。</li>
+          <li>用 Codex、Claude、Tripo、TapTap Maker 开发并上线游戏，评测主流模型。</li>
+          <li>在一线开发中提炼核心 Skill 反哺工具，主导落实 Maker 功能迭代与底层能力优化。</li>
+        </ul>
+      </div>
+      <div class="me-card">
+        <span class="when"><span class="en">EXPECTED MAY 2028</span><span class="zh">预计 2028 年 5 月毕业</span></span>
+        <h3><span class="en">New York University</span><span class="zh">纽约大学</span></h3>
+        <p class="role"><span class="en">Bachelor's in Game Design · NYU Game Center</span><span class="zh">游戏设计本科 · NYU Game Center</span></p>
+        <ul><li>GPA 3.889 / 4.0 · Dean's List</li></ul>
+        <div class="rank1"><strong>#1</strong><span><span class="en">Undergraduate game design program, The Princeton Review 2026</span><span class="zh">2026 普林斯顿评论 本科游戏设计专业排名第 1</span></span></div>
+      </div>
+    </div>
+    <div class="tools" aria-label="Tools">
+      <span>Unity</span><span>Unreal Engine</span><span>C#</span><span>Python</span><span>Codex</span><span>Claude Code</span><span>TapTap Maker</span><span>Tripo</span><span>Seedance</span><span>3ds Max</span><span>Maya</span><span>Substance 3D Painter</span><span>Photoshop</span><span>Figma</span>
+    </div>
+
+    <div class="contact" id="contact">
+      <p class="big"><span class="en">Contact</span><span class="zh">联系方式</span></p>
+      <div class="mailrow">
+        <span class="mail" id="mail">2424517640@qq.com</span>
+        <button class="btn fill" id="copy" type="button"><span class="en">Copy email</span><span class="zh">复制邮箱</span></button>
+        <span class="copied" id="copied" aria-live="polite"></span>
+      </div>
+      <div class="actions">
+        <a class="btn" href="https://ray-yangxinrui.itch.io/" target="_blank" rel="noopener">itch.io ↗</a>
+        <a class="btn" href="https://github.com/rayyangxinrui" target="_blank" rel="noopener">GitHub ↗</a>
+      </div>
+    </div>
+    <footer><span>RAY.TV</span><span>© 2026 Xinrui (Ray) Yang</span></footer>
+  </div>
+</section>
+</main>
+
+<script>
+(function(){
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const body = document.body;
+
+/* ---------- language ---------- */
+const langBtns = document.querySelectorAll('.lang button');
+function setLang(l){
+  body.dataset.lang = l; document.documentElement.lang = l==='zh'?'zh-CN':'en';
+  langBtns.forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.set===l)));
+  try{localStorage.setItem('lang',l)}catch(e){}
+}
+let saved=null; try{saved=localStorage.getItem('lang')}catch(e){}
+setLang(saved || ((navigator.language||'').toLowerCase().startsWith('zh')?'zh':'en'));
+langBtns.forEach(b=>b.addEventListener('click',()=>setLang(b.dataset.set)));
+
+/* ---------- channel dial, OSD, static ---------- */
+const st = document.getElementById('static'), sg = st.getContext('2d');
+function paintStatic(){const d=sg.createImageData(160,90);for(let i=0;i<d.data.length;i+=4){const v=Math.random()*255;d.data[i]=d.data[i+1]=d.data[i+2]=v;d.data[i+3]=255}sg.putImageData(d,0,0)}
+const osd=document.getElementById('osd'), osdN=document.getElementById('osd-n'), osdT=document.getElementById('osd-t');
+const dialLinks=[...document.querySelectorAll('.dial a')];
+let current=-1, osdTimer;
+function tuneTo(sec){
+  const n=+sec.dataset.ch; if(n===current) return; const first=current===-1; current=n;
+  dialLinks.forEach(a=>a.classList.toggle('on', +a.dataset.ch===n));
+  if(first) return;
+  osdN.textContent='CH '+String(n).padStart(2,'0');
+  osdT.textContent=sec.dataset[body.dataset.lang==='zh'?'nameZh':'nameEn']||'';
+  osd.classList.add('show'); clearTimeout(osdTimer); osdTimer=setTimeout(()=>osd.classList.remove('show'),1300);
+  if(!reduce){paintStatic(); st.classList.remove('flash'); void st.offsetWidth; st.classList.add('flash')}
+}
+const chans=[...document.querySelectorAll('section[data-ch]')];
+const chIO=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting) tuneTo(e.target)})},{rootMargin:'-45% 0px -45% 0px'});
+chans.forEach(s=>chIO.observe(s));
+dialLinks[0].classList.add('on');
+
+/* ---------- visibility helper ---------- */
+const vis=new Map();
+const visIO=new IntersectionObserver(es=>es.forEach(e=>vis.set(e.target,e.isIntersecting)));
+function watch(el){vis.set(el,false);visIO.observe(el);return ()=>vis.get(el)}
+
+/* ---------- CH00 runner: one run through every game's world ---------- */
+const hero=document.getElementById('ch0'), cv=document.getElementById('play'), ctx=cv.getContext('2d');
+const off=document.createElement('canvas'), g=off.getContext('2d');
+const heroVisible=watch(hero);
+const hiEl=document.getElementById('hi'), scEl=document.getElementById('sc'), wl=document.getElementById('wlabel'), modeEl=document.getElementById('mode');
+const WORLDS=[
+  {sky:['#0B1033','#3B1E63'],ground:'#120E24',line:'#7D6BFF',far:'#1C1747',near:'#2A2163',accent:'#FFD23F',grav:.34,ob:'cone',pk:'star',ch:'intro',en:'WORLD 0 · NEW YORK',zh:'第 0 关 · 纽约'},
+  {sky:['#030303','#2B0707'],ground:'#0D0A09',line:'#FF3B30',far:'#170C0C',near:'#241212',accent:'#7CFF6B',grav:.34,ob:'plank',pk:'battery',ch:'ch1',en:'CH01 HORROR LIVESTREAM · 30,000 PLAYERS',zh:'CH01 恐怖直播 · 3 万玩家'},
+  {sky:['#01020A','#0C1638'],ground:'#03040E',line:'#FF3A2E',far:'#1B2A5A',near:'#3A4E8C',accent:'#9CC2FF',grav:.17,ob:'rock',pk:'chip',ch:'ch2',en:'CH02 CONSCIOUSNESS OVERFLOW · LOW GRAVITY',zh:'CH02 意识溢出 · 低重力'},
+  {sky:['#3BF0B0','#1FC48A'],ground:'#1A0B2E',line:'#FF2E88',far:'#2BDCA0',near:'#FF2E88',accent:'#FFE75A',grav:.34,ob:'emoji',pk:'coin',ch:'ch3',en:'CH03 COIN-TOSS JOURNEY · 5,000 PLAYERS',zh:'CH03 撒币之旅 · 0.5 万玩家'},
+  {sky:['#FFE6A0','#FFC24A'],ground:'#2A1A08',line:'#E8202A',far:'#FFD772',near:'#FFF3CF',accent:'#E8202A',grav:.34,ob:'parrot',pk:'feather',ch:'ch4',en:'CH04 M.A.S.K. · GLOBAL GAME JAM 2026',zh:'CH04 M.A.S.K. · 2026 全球游戏创作节'}
+];
+const WLEN=1150, PX=36;
+let P=4,LW=200,LH=120,GROUND=90;
+let dist=0, speed=2.4, score=0, hi=0, auto=true, frameN=0, lastInput=-1e9, hold=false, shake=0, hurt=0;
+let pl={y:0,vy:0,ground:true}, obs=[], pks=[], parts=[], nextOb=260, nextPk=180, shownWorld=-1, shownMode=null, started=!reduce;
+try{hi=+localStorage.getItem('rayrun-hi')||0}catch(e){}
+const pad=n=>String(Math.floor(n)).padStart(5,'0');
+hiEl.textContent=pad(hi);
+
+function layoutRun(){
+  const r=hero.getBoundingClientRect();
+  P=Math.max(2,Math.round(r.height/200));
+  LW=Math.ceil(r.width/P); LH=Math.ceil(r.height/P);
+  off.width=LW; off.height=LH; cv.width=LW*P; cv.height=LH*P;
+  GROUND=LH-Math.max(26,Math.round(LH*.2));
+}
+layoutRun(); addEventListener('resize',layoutRun);
+
+const rnd=(i,s)=>{const x=Math.sin(i*127.1+s*311.7)*43758.5453;return x-Math.floor(x)};
+const hex=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+const mix=(a,b,t)=>{const A=hex(a),B=hex(b);return 'rgb('+A.map((v,i)=>Math.round(v+(B[i]-v)*t)).join(',')+')'};
+const worldAt=d=>Math.floor(Math.max(0,d)/WLEN)%WORLDS.length;
+function R(x,y,w,h,c){g.fillStyle=c;g.fillRect(Math.round(x),Math.round(y),w,h)}
+function disc(cx,cy,r,c){g.fillStyle=c;for(let dy=-r;dy<=r;dy++){const w=Math.floor(Math.sqrt(r*r-dy*dy+r*.8));g.fillRect(Math.round(cx-w),Math.round(cy+dy),w*2+1,1)}}
+function rays(cx,cy,n,c,rot,len){g.fillStyle=c;for(let i=0;i<n;i++){const a=rot+i*Math.PI*2/n,b=a+Math.PI/n;g.beginPath();g.moveTo(cx,cy);g.lineTo(cx+Math.cos(a)*len,cy+Math.sin(a)*len);g.lineTo(cx+Math.cos(b)*len,cy+Math.sin(b)*len);g.fill()}}
+
+/* scenery per world */
+const SCENE=[
+  function nyc(w){
+    disc(LW*.8,LH*.2,9,'#F4EFD8'); disc(LW*.8+4,LH*.2-2,8,mix(w.sky[0],w.sky[1],.25));
+    let o=dist*.15; for(let i=Math.floor(o/18)-1;i<o/18+LW/18+2;i++){const x=i*18-o,h=24+rnd(i,1)*48,bw=12+Math.floor(rnd(i,2)*6);R(x,GROUND-h,bw,h,w.far);
+      for(let k=0;k<6;k++){if(rnd(i,k+5)>.55)R(x+2+(k%3)*4,GROUND-h+4+Math.floor(k/3)*6,1,1,w.accent)}}
+    o=dist*.42; for(let i=Math.floor(o/36)-1;i<o/36+LW/36+2;i++){const x=i*36-o,h=30+rnd(i,7)*56,bw=26+Math.floor(rnd(i,8)*8);R(x,GROUND-h,bw,h,w.near);
+      for(let yy=GROUND-h+5;yy<GROUND-6;yy+=6)for(let xx=x+3;xx<x+bw-3;xx+=5){if(rnd(i*31+xx,yy)>.62)R(xx,yy,2,2,'#FFD86B')}
+      if(((i%7)+7)%7===3){g.font='8px Silkscreen, monospace';const tw=Math.ceil(g.measureText('RAY YANG').width),sx=Math.round(x+bw/2-tw/2-4);R(sx-1,GROUND-h-16,tw+10,14,'#0A0820');R(sx,GROUND-h-15,tw+8,12,'#16123A');g.fillStyle=(frameN>>4)%9?'#FF5B3A':'#5a2a20';g.textBaseline='top';g.fillText('RAY YANG',sx+4,GROUND-h-13);R(x+bw/2-1,GROUND-h-2,2,2,'#0A0820')}}
+  },
+  function horror(w){
+    const o=dist*.5; for(let i=Math.floor(o/44)-1;i<o/44+LW/44+2;i++){const x=i*44-o;R(x,0,9,GROUND,w.near);R(x+9,0,1,GROUND,'#000');
+      if(((i%3)+3)%3===0){const on=rnd(i,Math.floor(frameN/6))>.18;if(on){for(let k=4;k>0;k--){g.globalAlpha=.06*k*w._a;disc(x+22,18,k*7,'#FFE6B0')}g.globalAlpha=w._a;R(x+19,14,7,3,'#FFF1C8')}}
+      if(rnd(i,3)>.72&&(frameN+i*40)%240<170){R(x+28,GROUND-38,2,2,'#FF2A2A');R(x+33,GROUND-38,2,2,'#FF2A2A')}}
+    R(0,GROUND-3,LW,1,'#3A0A0A');
+  },
+  function space(w){
+    for(let i=0;i<140;i++){const z=rnd(i,3)*.6+.15;const x=((rnd(i,1)*LW*2-dist*.05*z)%LW+LW)%LW,y=rnd(i,2)*GROUND;R(x,y,1,1,rnd(i,4)>.85?w.accent:'#E8ECFF')}
+    const px=LW*.72-(dist%WLEN)*.06,py=LH*.3; disc(px,py,24,'#C9A26B'); disc(px-6,py-6,10,'#D8B57E'); R(px-24,py+3,49,2,'#8E6E44');
+    g.strokeStyle='#E7D3A8';g.lineWidth=1;g.beginPath();g.ellipse(px,py,40,8,-.2,0,Math.PI*2);g.stroke();
+    disc(LW*.2-(dist%WLEN)*.03,LH*.18,5,'#3A4E8C');
+  },
+  function coin(w){
+    rays(LW*.5,GROUND+20,14,'rgba(255,46,136,.22)',frameN*.004,LW);
+    const o=dist*.4; for(let i=Math.floor(o/16)-1;i<o/16+LW/16+2;i++){const x=i*16-o;R(x,GROUND-14,15,6,'#24C990');R(x+8,GROUND-7,15,6,'#24C990')}
+  },
+  function mask(w){
+    rays(LW*.5,LH*.55,18,w.near,frameN*.002,LW);
+    const o=dist*.3; for(let i=Math.floor(o/90)-1;i<o/90+LW/90+2;i++){const x=i*90-o,y=12+rnd(i,2)*30;R(x,y,26,6,'#FFFFFF');R(x+5,y-4,14,4,'#FFFFFF');R(x+3,y+6,22,1,'#E9C77A')}
+  }
+];
+
+/* sprites */
+const PAL={H:'#16161E',S:'#F2C9A0',E:'#111',B:'#FF5B3A',P:'#2B2BEF',W:'#F2F1EC'};
+const TOP=["...HHHH..","..HHHHHH.","..HHSSES.","..HSSSSS.","...SSSS..","..BBBBB..",".BBBBBBB.",".SBBBBBS.","..BBBBB.."];
+const LEGS=[["..PP.PP..",".PP...PP.",".WW...WW."],["..PPPP...","...PPP...","...WWW..."],["..PP.PP..","..WW.WW..","........."]];
+function sprite(rows,x,y){for(let r=0;r<rows.length;r++)for(let c=0;c<rows[r].length;c++){const k=rows[r][c];if(k!=='.')R(x+c*2,y+r*2,2,2,PAL[k])}}
+
+const OB={cone:[10,14],plank:[20,15],rock:[14,12],emoji:[14,14],parrot:[18,13]};
+function drawOb(o){const x=o.x,b=GROUND;
+  if(o.t==='cone'){for(let i=0;i<12;i++){const ww=2+Math.floor(i*.7);R(x+5-ww/2,b-14+i,ww,1,(i===5||i===6||i===9)?'#F2F1EC':'#FF7A1A')}R(x-1,b-2,12,2,'#3a2a20')}
+  else if(o.t==='plank'){R(x,b-15,2,15,'#4A2F1C');R(x+18,b-15,2,15,'#4A2F1C');R(x-1,b-13,22,3,'#8A5A34');R(x-1,b-7,22,3,'#7A4E2C');R(x+3,b-12,1,1,'#ccc');R(x+16,b-6,1,1,'#ccc')}
+  else if(o.t==='rock'){disc(x+7,b-6,6,'#6B6F80');disc(x+5,b-8,2,'#9AA0B5');R(x+8,b-5,2,2,'#4A4E5E')}
+  else if(o.t==='emoji'){const y=b-7-Math.abs(Math.sin(frameN*.12+o.x*.05))*5;disc(x+7,y,6,'#FFD23F');R(x+3,y-3,3,1,'#1A0B2E');R(x+8,y-3,3,1,'#1A0B2E');R(x+4,y-2,2,2,'#1A0B2E');R(x+9,y-2,2,2,'#1A0B2E');R(x+4,y+2,6,1,'#1A0B2E');o.dy=y-(b-7)}
+  else if(o.t==='parrot'){const c=['#F21F1F','#1C8FE8','#9CC81E','#FF2BA6'][o.v%4],fl=(frameN>>3)%2,y=b-12;R(x+2,y+3,10,7,c);R(x+11,y,6,6,c);R(x+15,y+2,3,2,'#E8DCC8');R(x+13,y+1,2,2,'#fff');R(x+14,y+2,1,1,'#000');R(x,y+5,3,6,c);R(x+4,y+(fl?-2:8),7,3,fl?'#FFD23F':'#2A1A08');R(x+5,y+10,1,3,'#2A1A08');R(x+8,y+10,1,3,'#2A1A08')}
+}
+function drawPk(p){const x=p.x,y=GROUND-p.h,bob=Math.sin(frameN*.1+p.x*.1)*1.5,yy=Math.round(y+bob);
+  if(p.t==='star'){R(x+2,yy,1,5,'#FFD23F');R(x,yy+2,5,1,'#FFD23F');R(x+1,yy+1,3,3,'#FFE98A')}
+  else if(p.t==='battery'){R(x,yy+1,5,7,'#7CFF6B');R(x+1,yy,3,1,'#ddd');R(x+1,yy+3,3,1,'#1d3d18')}
+  else if(p.t==='chip'){R(x,yy,6,6,'#9CC2FF');R(x+1,yy+1,4,4,'#1B2A5A');R(x+2,yy+2,2,2,'#9CC2FF')}
+  else if(p.t==='coin'){disc(x+3,yy+3,3,'#FFE75A');R(x+3,yy+1,1,5,'#C99500')}
+  else if(p.t==='feather'){R(x+1,yy,2,7,'#E8202A');R(x,yy+2,1,3,'#1C8FE8');R(x+3,yy+3,1,3,'#9CC81E')}
+}
+
+function press(){
+  if(!started){started=true}
+  lastInput=frameN; if(auto){auto=false}
+  hold=true; if(pl.ground){const w=WORLDS[worldAt(dist)];pl.vy=w.grav<.3?4.1:5.5;pl.ground=false}
+}
+function release(){hold=false}
+cv.addEventListener('pointerdown',e=>{if(e.button===0||e.pointerType!=='mouse')press()});
+['pointerup','pointercancel','pointerleave'].forEach(t=>cv.addEventListener(t,release));
+function heroInView(){const r=hero.getBoundingClientRect();return r.bottom>innerHeight*.55&&r.top<innerHeight*.35}
+addEventListener('keydown',e=>{if((e.code==='Space'||e.code==='ArrowUp')&&heroInView()&&!/^(INPUT|TEXTAREA|BUTTON|A)$/.test(document.activeElement.tagName)){e.preventDefault();if(!e.repeat)press()}});
+addEventListener('keyup',e=>{if(e.code==='Space'||e.code==='ArrowUp')release()});
+wl.addEventListener('click',()=>{const w=WORLDS[worldAt(dist)];const t=document.getElementById(w.ch);if(t)t.scrollIntoView({behavior:reduce?'auto':'smooth'})});
+
+function runStep(){
+  frameN++;
+  if(!started) return;
+  if(!auto&&frameN-lastInput>720){auto=true}
+  dist+=speed; score+=speed*.06;
+  const w=WORLDS[worldAt(dist)];
+  // spawn
+  if(dist>=nextOb){const tw=WORLDS[worldAt(dist+LW-PX)];obs.push({t:tw.ob,x:LW+6,v:Math.floor(Math.random()*4)});nextOb=dist+150+Math.random()*190}
+  if(dist>=nextPk){const tw=WORLDS[worldAt(dist+LW-PX)];pks.push({t:tw.pk,x:LW+6,h:22+Math.random()*22});nextPk=dist+110+Math.random()*160}
+  obs.forEach(o=>o.x-=speed); pks.forEach(p=>p.x-=speed);
+  obs=obs.filter(o=>o.x>-30); pks=pks.filter(p=>p.x>-10&&!p.got);
+  // autopilot
+  if(auto&&pl.ground){const n=obs.find(o=>o.x+OB[o.t][0]>PX&&o.x-(PX+16)<speed*(w.grav<.3?10:12)&&o.x>PX-4);if(n){pl.vy=w.grav<.3?4.1:5.5;pl.ground=false}}
+  // physics
+  if(!pl.ground){pl.vy-=w.grav*(hold&&pl.vy>0?.55:1);pl.y+=pl.vy;if(pl.y<=0){pl.y=0;pl.vy=0;pl.ground=true}}
+  // collisions
+  const top=GROUND-24-pl.y, bot=GROUND-pl.y;
+  for(const p of pks){if(p.x<PX+16&&p.x+6>PX+2&&GROUND-p.h<bot&&GROUND-p.h+7>top){p.got=true;score+=40;for(let k=0;k<6;k++)parts.push({x:p.x+3,y:GROUND-p.h+3,vx:(Math.random()-.5)*2,vy:-Math.random()*2,l:24,c:w.accent})}}
+  if(!auto&&hurt===0){for(const o of obs){const [ow,oh]=OB[o.t];const oy=GROUND+(o.dy||0);if(o.x+2<PX+15&&o.x+ow-2>PX+3&&oy-oh+3<bot&&oy>top+2){hurt=70;shake=10;if(score>hi){hi=score;try{localStorage.setItem('rayrun-hi',Math.floor(hi))}catch(e){}hiEl.textContent=pad(hi)}score=0;for(let k=0;k<10;k++)parts.push({x:PX+8,y:top+10,vx:(Math.random()-.5)*3,vy:-Math.random()*3,l:30,c:'#FF5B3A'});break}}}
+  if(hurt>0)hurt--; if(shake>0)shake--;
+  parts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=.12;p.l--}); parts=parts.filter(p=>p.l>0);
+  if(score>hi&&!auto){hi=score;hiEl.textContent=pad(hi)}
+  scEl.textContent=pad(score);
+}
+function runDraw(){
+  const wi=worldAt(dist), w=WORLDS[wi], prev=WORLDS[(wi+WORLDS.length-1)%WORLDS.length];
+  const p=(dist%WLEN)/WLEN, t=dist<WLEN?1:Math.min(1,p/.06);
+  const sky=g.createLinearGradient(0,0,0,GROUND);
+  sky.addColorStop(0,mix(prev.sky[0],w.sky[0],t)); sky.addColorStop(1,mix(prev.sky[1],w.sky[1],t));
+  g.globalAlpha=1; g.fillStyle=sky; g.fillRect(0,0,LW,LH);
+  if(t<1){prev._a=1-t;g.globalAlpha=1-t;SCENE[(wi+WORLDS.length-1)%WORLDS.length](prev)}
+  w._a=t; g.globalAlpha=t; SCENE[wi](w); g.globalAlpha=1;
+  // ground
+  R(0,GROUND,LW,LH-GROUND,mix(prev.ground,w.ground,t)); R(0,GROUND,LW,1,mix(prev.line,w.line,t));
+  const lc=mix(prev.line,w.line,t); g.globalAlpha=.45; for(let x=-(dist%14);x<LW;x+=14)R(x,GROUND+4,6,1,lc); for(let x=-(dist*1.3%23);x<LW;x+=23)R(x,GROUND+9,2,1,lc); g.globalAlpha=1;
+  // checkpoint flag at the next world boundary
+  const k=Math.ceil((dist+1)/WLEN), fx=PX+(k*WLEN-dist), nw=WORLDS[k%WORLDS.length];
+  if(fx<LW+40){R(fx,GROUND-34,1,34,'#F2F1EC');R(fx+1,GROUND-34,16,9,nw.line);g.font='8px Silkscreen, monospace';g.textBaseline='top';g.fillStyle='#fff';g.fillText(k%WORLDS.length?'CH0'+(k%WORLDS.length):'NYC',fx+2,GROUND-34)}
+  pks.forEach(drawPk); obs.forEach(drawOb);
+  parts.forEach(q=>R(q.x,q.y,1,1,q.c));
+  // player
+  const leg=!pl.ground?LEGS[2]:LEGS[(frameN>>2)%2]; const py=GROUND-24-Math.round(pl.y);
+  if(!(hurt>0&&(frameN>>2)%2)){sprite(TOP,PX,py);sprite(leg,PX,py+18)}
+  if(!pl.ground){}else{g.globalAlpha=.25;R(PX+2,GROUND+1,14,1,'#000');g.globalAlpha=1}
+  if(!started){g.font='8px Silkscreen, monospace';g.fillStyle='#fff';g.textBaseline='top';g.fillText(body.dataset.lang==='zh'?'PRESS SPACE / TAP':'PRESS SPACE / TAP',PX+26,py+6)}
+  // blit
+  ctx.imageSmoothingEnabled=false; ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.drawImage(off,(shake?(Math.random()-.5)*3:0)*P,0,LW*P,LH*P);
+  // HUD text
+  if(shownWorld!==wi){shownWorld=wi;wl.innerHTML=`<span class="en">${w.en} ›</span><span class="zh">${w.zh} ›</span>`}
+  if(shownMode!==auto){shownMode=auto;modeEl.innerHTML=auto?'<span class="en">AUTOPILOT · PRESS SPACE TO TAKE OVER</span><span class="zh">自动演示 · 按空格接管</span>':'<span class="en">YOU ARE PLAYING</span><span class="zh">你正在操作</span>'}
+}
+if(document.fonts){document.fonts.load('8px Silkscreen').catch(()=>{})}
+
+/* ---------- CH02 stars ---------- */
+const s2=document.getElementById('ch2'), sc=document.getElementById('stars'), sx=sc.getContext('2d');
+const starsVisible=watch(s2);
+let stars=[], mx=0, my=0, SW=0, SH=0;
+function starLayout(){const r=s2.getBoundingClientRect();SW=r.width;SH=r.height;const d=Math.min(2,devicePixelRatio||1);sc.width=SW*d;sc.height=SH*d;sx.setTransform(d,0,0,d,0,0);
+  stars=[...Array(Math.round(SW*SH/2600))].map(()=>({x:Math.random()*SW,y:Math.random()*SH,z:Math.random()*.9+.1,tw:Math.random()*6}))}
+s2.addEventListener('pointermove',e=>{const r=s2.getBoundingClientRect();mx=(e.clientX-r.left)/r.width-.5;my=(e.clientY-r.top)/r.height-.5});
+function drawStars(t){sx.clearRect(0,0,SW,SH);
+  for(const s of stars){const a=.35+.65*s.z*(.7+.3*Math.sin(t/700+s.tw));sx.fillStyle=`rgba(235,240,255,${a})`;
+    const x=(s.x+mx*-40*s.z+SW)%SW, y=(s.y+my*-30*s.z+t*.004*s.z+SH)%SH; sx.fillRect(x,y,s.z*1.8,s.z*1.8)}}
+starLayout(); addEventListener('resize',starLayout);
+
+/* ---------- 21-day bar ---------- */
+const days=document.getElementById('days'); for(let i=0;i<21;i++){const d=document.createElement('i');d.style.transitionDelay=(i*55)+'ms';days.appendChild(d)}
+new IntersectionObserver((es,o)=>es.forEach(e=>{if(e.isIntersecting){days.classList.add('go');o.disconnect()}}),{threshold:.6}).observe(days);
+
+/* ---------- CH01 danmaku + timecode ---------- */
+const dmBox=document.getElementById('danmaku'), s1=document.getElementById('ch1'), s1vis=watch(s1);
+const comments=['主播背后!!','你们看见了吗？','别回头','电池在左边那个房间','666666','那个门别进去','这地图也太大了吧','主播稳住','???','我手心都是汗','快跑快跑','刚刚那是什么','信号又断了','前面有东西','总感觉被跟着'];
+let row=0;
+function spawnDm(){const el=document.createElement('span');el.className='dm';el.textContent=comments[Math.floor(Math.random()*comments.length)];
+  el.style.top=(6+ (row++%7)*12.5)+'%'; const dur=6+Math.random()*4; el.style.animationDuration=dur+'s';
+  if(Math.random()<.2)el.style.color='#FF6B5E'; dmBox.appendChild(el); setTimeout(()=>el.remove(),dur*1000+100)}
+const tc=document.getElementById('tc'); const t0=performance.now();
+setInterval(()=>{if(!s1vis())return; if(!reduce)spawnDm(); const s=Math.floor((performance.now()-t0)/1000); tc.textContent=[s/3600,s/60%60,s%60].map(v=>String(Math.floor(v)).padStart(2,'0')).join(':')},800);
+if(reduce){for(let i=0;i<6;i++){const el=document.createElement('span');el.className='dm';el.style.animation='none';el.style.left=(8+i*13)+'%';el.style.top=(8+i*13)+'%';el.textContent=comments[i];dmBox.appendChild(el)}}
+
+/* ---------- CH03 coin toss ---------- */
+const s3=document.getElementById('ch3');
+s3.addEventListener('click',e=>{if(e.target.closest('a'))return;const r=s3.getBoundingClientRect();const x=e.clientX-r.left,y=e.clientY-r.top;
+  for(let i=0;i<14;i++){const c=document.createElement('i');c.className='coin';c.style.left=x+'px';c.style.top=y+'px';
+    const a=Math.random()*Math.PI*2, d=60+Math.random()*120; c.style.setProperty('--dx',Math.cos(a)*d+'px');c.style.setProperty('--dy',(Math.sin(a)*d-40)+'px');c.style.setProperty('--r',(Math.random()*360)+'deg');
+    s3.appendChild(c); setTimeout(()=>c.remove(),950)}});
+
+/* ---------- CH05 terminal ---------- */
+const out=document.getElementById('termOut');
+const log=[
+  ['dim','$ rayloop run --project hero-shooting --max-rounds 10'],
+  ['','round 1  build → independent review'],
+  ['','round 2  A/B vs r1   <span class="ok">▲▲▲▲▲</span>'],
+  ['','round 3  A/B vs r2   <span class="ok">▲▲▲▲</span>'],
+  ['','round 4  A/B vs r3   <span class="ok">▲▲▲</span>'],
+  ['','round 5  A/B vs r4   <span class="ok">▲▲</span>'],
+  ['','round 6  A/B vs r5   <span class="ok">▲</span>'],
+  ['','round 7  A/B vs r6   <span class="dim">·</span>'],
+  ['ex','✕ diminishing returns → exit loop'],
+  ['dim','  # illustrative log, not real run output'],
+];
+let typed=false;
+new IntersectionObserver((es,o)=>es.forEach(e=>{if(e.isIntersecting && !typed){typed=true;o.disconnect();
+  let i=0; const next=()=>{if(i>=log.length){out.insertAdjacentHTML('beforeend','<span class="cursor"></span>');return}
+    const [cls,txt]=log[i++]; out.insertAdjacentHTML('beforeend',`<div class="${cls}">${txt}</div>`); setTimeout(next, reduce?0:(i===1?500:360))}; next()}}),{threshold:.4}).observe(out);
+
+/* ---------- tilt on media ---------- */
+if(matchMedia('(hover:hover)').matches && !reduce){
+  document.querySelectorAll('.tilt').forEach(el=>{
+    const base=getComputedStyle(el).transform==='none'?'':getComputedStyle(el).transform;
+    el.addEventListener('pointermove',e=>{const r=el.getBoundingClientRect();const x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;
+      el.style.transform=`perspective(900px) rotateY(${x*10}deg) rotateX(${-y*8}deg) ${base}`});
+    el.addEventListener('pointerleave',()=>{el.style.transform=''});
+  });
+}
+
+/* ---------- draggable stickers ---------- */
+document.querySelectorAll('.sticker').forEach(s=>{
+  let sx0,sy0,ox=0,oy=0,dragging=false; const rot=getComputedStyle(s).transform;
+  s.addEventListener('pointerdown',e=>{dragging=true;s.setPointerCapture(e.pointerId);sx0=e.clientX-ox;sy0=e.clientY-oy;s.style.zIndex=5});
+  s.addEventListener('pointermove',e=>{if(!dragging)return;ox=e.clientX-sx0;oy=e.clientY-sy0;s.style.transform=`translate(${ox}px,${oy}px) ${rot==='none'?'':rot} scale(1.05)`});
+  const up=()=>{if(!dragging)return;dragging=false;s.style.transform=`translate(${ox}px,${oy}px) ${rot==='none'?'':rot}`};
+  s.addEventListener('pointerup',up);s.addEventListener('pointercancel',up);
+});
+
+/* ---------- copy email ---------- */
+const copyBtn=document.getElementById('copy'), copied=document.getElementById('copied'), mail=document.getElementById('mail');
+copyBtn.addEventListener('click',()=>{
+  const ok=()=>{copied.textContent=body.dataset.lang==='zh'?'已复制':'COPIED';setTimeout(()=>copied.textContent='',2000)};
+  const fb=()=>{const r=document.createRange();r.selectNodeContents(mail);const s=getSelection();s.removeAllRanges();s.addRange(r);copied.textContent=body.dataset.lang==='zh'?'已选中，按 Ctrl+C':'SELECTED · PRESS CTRL+C'};
+  try{navigator.clipboard.writeText(mail.textContent).then(ok,fb)}catch(e){fb()}
+});
+
+/* ---------- main loop ---------- */
+let lastT=0;
+function frame(t){
+  const n=Math.min(4,Math.max(1,Math.round((t-(lastT||t))/16.7)||1)); lastT=t;
+  if(heroVisible()){for(let k=0;k<n;k++)runStep();runDraw()}
+  if(starsVisible())drawStars(t);
+  requestAnimationFrame(frame);
+}
+if(reduce){runDraw();drawStars(0)}
+requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>
